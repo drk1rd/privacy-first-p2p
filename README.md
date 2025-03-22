@@ -1,4 +1,4 @@
-# P2P Chunked File Sharing Test
+# P2P Chunked File Sharing
 
 ## Overview
 This project simulates a peer-to-peer (P2P) network that distributes and retrieves files in smaller, chunked pieces across multiple nodes.
