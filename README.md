@@ -1,8 +1,5 @@
 # P2P Chunked File Sharing
 
-## Overview
-This project simulates a peer-to-peer (P2P) network that distributes and retrieves files in smaller, chunked pieces across multiple nodes.
-
 ## Files
 - **p2p_node_chunked.py**: Defines the `P2PNode` class, handling node communication, data storage, and retrieval.
 - **test.py**: Main script that sets up nodes, splits files into chunks, distributes chunks across nodes, and retrieves/reassembles the file.
