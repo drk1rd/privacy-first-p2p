@@ -3,6 +3,7 @@ import time
 import os
 import base64
 import zlib
+import random
 from p2p_node_chunked import P2PNode
 
 CHUNK_SIZE = 16 * 1024  # Reduced chunk size to 16KB
@@ -47,7 +48,7 @@ async def distribute_file(nodes, file_path):
         compressed_chunk = zlib.compress(chunk_data)
         encoded_chunk = base64.b64encode(compressed_chunk).decode('utf-8')
 
-        # Recursive sub-chunking to avoid failures
+        # Recursive sub-chunking to ensure all sub-chunks fit the size limit
         def create_sub_chunks(data):
             """Recursive splitter to ensure all sub-chunks fit the size limit."""
             if len(data) <= SUB_CHUNK_SIZE:
@@ -60,19 +61,17 @@ async def distribute_file(nodes, file_path):
         # Store each sub-chunk on different nodes
         for sub_idx, sub_chunk in enumerate(sub_chunks):
             sub_key = f"chunk:{file_path}:{i}:{sub_idx}"
-            node_index = (i + sub_idx) % len(nodes)
-            node = nodes[node_index]
+            node = random.choice(nodes)
             if await store_sub_chunk_with_retry(node, sub_key, sub_chunk):
-                print(f"✅ Stored sub-chunk {i}-{sub_idx} on Node {node_index + 1}")
+                print(f"✅ Stored sub-chunk {i}-{sub_idx} on Node {nodes.index(node) + 1}")
             else:
-                print(f"❌ Failed to store sub-chunk {i}-{sub_idx} on Node {node_index + 1}")
+                print(f"❌ Failed to store sub-chunk {i}-{sub_idx} on Node {nodes.index(node) + 1}")
 
     return num_chunks
 
 async def download_file_from_peers(nodes, file_name, total_chunks, output_path):
     """Retrieve chunks from multiple nodes in parallel and reconstruct the file."""
-    last_node = nodes[-1]
-    print(f"⚡ Node {len(nodes)} downloading file in parallel...")
+    print(f"⚡ Downloading file in parallel from multiple nodes...")
 
     chunks = [None] * total_chunks
 
@@ -81,6 +80,7 @@ async def download_file_from_peers(nodes, file_name, total_chunks, output_path):
         print(f"🛠️ Retrieving chunk key: {chunk_key}")
 
         for attempt in range(3):
+            random.shuffle(nodes)
             for node in nodes:
                 encoded_chunk = await node.node.get(chunk_key)
 
