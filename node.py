@@ -1,67 +1,38 @@
-import socket
-import threading
-import json
+import asyncio
+from kademlia.network import Server
 
-HOST = "127.0.0.1"
-PORT = 65432
-peers = []
+# Configuration
+PORT = 8468
+BOOTSTRAP_NODE = ("127.0.0.1", 8468)
 
-def handle_client(conn, addr):
-    print(f"New connection from {addr}")
-    try:
-        data = conn.recv(1024).decode()
-        if data:
-            message = json.loads(data)
-            if message["type"] == "peer":
-                if message["addr"] not in peers:
-                    peers.append(message["addr"])
-                    print(f"New peer added: {message['addr']}")
-            elif message["type"] == "message":
-                print(f"Message from {addr}: {message['content']}")
-    except Exception as e:
-        print(f"Error handling client {addr}: {e}")
-    finally:
-        conn.close()
+async def run_node():
+    # Create and start the node
+    node = Server()
+    await node.listen(PORT)
 
-def start_server():
-    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server.bind((HOST, PORT))
-    server.listen()
-    print(f"Node listening on {HOST}:{PORT}")
-
-    while True:
-        conn, addr = server.accept()
-        threading.Thread(target=handle_client, args=(conn, addr)).start()
-
-def connect_to_peer(peer_host, peer_port):
-    try:
-        client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        client.connect((peer_host, peer_port))
-        client.send(json.dumps({"type": "peer", "addr": f"{HOST}:{PORT}"}).encode())
-        client.close()
-        if f"{peer_host}:{peer_port}" not in peers:
-            peers.append(f"{peer_host}:{peer_port}")
-    except Exception as e:
-        print(f"Failed to connect to peer {peer_host}:{peer_port} — {e}")
-
-def send_message(content):
-    for peer in peers:
+    # If this is the first node, bootstrap to itself
+    if PORT == BOOTSTRAP_NODE[1]:
+        print("This is the bootstrap node.")
+    else:
         try:
-            peer_host, peer_port = peer.split(":")
-            client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            client.connect((peer_host, int(peer_port)))
-            client.send(json.dumps({"type": "message", "content": content}).encode())
-            client.close()
+            print(f"Connecting to bootstrap node at {BOOTSTRAP_NODE}")
+            await node.bootstrap([BOOTSTRAP_NODE])
         except Exception as e:
-            print(f"Failed to send message to {peer}: {e}")
+            print(f"Bootstrap failed: {e}")
 
-threading.Thread(target=start_server).start()
+    # Store a file hash (key) and its "location" (value)
+    file_key = "file:example.txt"
+    file_data = "This is the content of the file!"
+    print(f"Storing file under key '{file_key}'...")
+    await node.set(file_key, file_data)
 
-while True:
-    command = input("Enter 'connect [IP] [PORT]' or 'send [message]': ").strip()
-    if command.startswith("connect"):
-        _, ip, port = command.split()
-        connect_to_peer(ip, int(port))
-    elif command.startswith("send"):
-        _, msg = command.split(" ", 1)
-        send_message(msg)
+    # Retrieve the file content from the DHT
+    print(f"Retrieving file from key '{file_key}'...")
+    result = await node.get(file_key)
+    print(f"File content: {result}")
+
+    # Keep the node running
+    await asyncio.sleep(3600)
+
+# Run the node
+asyncio.run(run_node())
