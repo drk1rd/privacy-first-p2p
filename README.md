@@ -9,7 +9,7 @@
 2. Install required packages (if any).
 3. Run the main script:
    ```bash
-   python tests.py
+   python test.py
    ```
 4. The script generates a test file, distributes it, retrieves it, and verifies its integrity.
 
