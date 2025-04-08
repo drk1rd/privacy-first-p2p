@@ -45,7 +45,8 @@ def chunk_and_encrypt(filepath):
 
     manifest = {
         "filename": filepath.split("/")[-1],
-        "chunks": {},
+        "chunks": [],  # Now ordered list of hashes
+        "chunk_data": {},
         "nonces": {},
         "encrypted_key": ""
     }
@@ -58,7 +59,9 @@ def chunk_and_encrypt(filepath):
             cipher = AES.new(key, AES.MODE_EAX)
             ciphertext, _ = cipher.encrypt_and_digest(compressed)
             chunk_hash = sha256(ciphertext).hexdigest()
-            manifest["chunks"][chunk_hash] = base64.b64encode(ciphertext).decode()
+
+            manifest["chunks"].append(chunk_hash)
+            manifest["chunk_data"][chunk_hash] = base64.b64encode(ciphertext).decode()
             manifest["nonces"][chunk_hash] = base64.b64encode(cipher.nonce).decode()
 
     return key, manifest
@@ -90,6 +93,6 @@ def decrypt_and_reconstruct(manifest, key, dht, output_dir="."):
         t.join()
 
     with open(out_path, "wb") as f:
-        for chunk_hash in sorted(sub_chunks):
+        for chunk_hash in manifest["chunks"]:
             f.write(sub_chunks[chunk_hash])
     print(f"File reconstructed at: {out_path}")

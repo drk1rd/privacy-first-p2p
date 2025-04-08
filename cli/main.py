@@ -1,11 +1,11 @@
 import os
 import json
-from cli.encryption_utils import (
+from encryption_utils import (
     generate_rsa_keypair, load_private_key, load_public_key,
     encrypt_key_with_rsa, decrypt_key_with_rsa,
     chunk_and_encrypt, decrypt_and_reconstruct
 )
-from cli.p2p_node import DHT, PeerNode
+from p2p_node import DHT, PeerNode
 
 dht = DHT()
 peer_node = PeerNode(dht)
@@ -22,8 +22,8 @@ def upload_file():
     aes_key, manifest = chunk_and_encrypt(file_path)
     manifest["encrypted_key"] = encrypt_key_with_rsa(pub_key, aes_key).hex()
 
-    for h, chunk in manifest["chunks"].items():
-        dht.store(h, chunk)
+    for h in manifest["chunks"]:
+        dht.store(h, manifest["chunk_data"][h])
 
     manifest_path = file_path + "_manifest.json"
     with open(manifest_path, "w") as f:

@@ -15,5 +15,5 @@ class PeerNode:
         self.peers = []
 
     def connect_to_peer(self, ip, port):
+        print(f"Connected to {ip}:{port}")
         self.peers.append((ip, port))
-        print(f"Simulated connection to peer {ip}:{port}")
