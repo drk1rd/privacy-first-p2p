@@ -1,11 +1,11 @@
 import os
 import json
-from encryption_utils import (
+from cli.encryption_utils import (
     generate_rsa_keypair, load_private_key, load_public_key,
     encrypt_key_with_rsa, decrypt_key_with_rsa,
     chunk_and_encrypt, decrypt_and_reconstruct
 )
-from p2p_node import DHT, PeerNode
+from cli.p2p_node import DHT, PeerNode
 
 dht = DHT()
 peer_node = PeerNode(dht)
