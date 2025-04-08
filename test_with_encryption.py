@@ -136,23 +136,23 @@ async def run_chunked_file_sharing_test():
     output_path = "retrieved_file.txt"
 
     # Prepare a larger test file
-    with open(file_path, "wb") as f:
-        f.write(os.urandom(512 * 1024))  # 512KB random data
-#     sample_text="""\
-# Privacy-First P2P File Sharing Test
+    # with open(file_path, "wb") as f:
+    #     f.write(os.urandom(512 * 1024))  # 512KB random data
+    sample_text="""\
+Privacy-First P2P File Sharing Test
 
-# This is a test file to validate that chunk-level encryption, compression, 
-# and distributed storage in a Kademlia DHT network is working correctly.
+This is a test file to validate that chunk-level encryption, compression, 
+and distributed storage in a Kademlia DHT network is working correctly.
 
-# Each chunk of this file will be encrypted, compressed, base64-encoded, 
-# distributed across nodes, and then retrieved, reassembled, and decrypted.
+Each chunk of this file will be encrypted, compressed, base64-encoded, 
+distributed across nodes, and then retrieved, reassembled, and decrypted.
 
-# ✅ End-to-end test for encrypted file sharing using Python.
-# 🔐 Let's make peer-to-peer secure again!"""
+✅ End-to-end test for encrypted file sharing using Python.
+🔐 Let's make peer-to-peer secure again!"""
 
-#     with open(file_path,"w",encoding="utf-8") as f:
-#         for _ in range(1000):
-#             f.write(sample_text)
+    with open(file_path,"w",encoding="utf-8") as f:
+        for _ in range(1000):
+            f.write(sample_text)
 
     total_chunks = await distribute_file(nodes, file_path, cipher)
     success = await download_file_from_peers(nodes, "test_file.txt", total_chunks, output_path, cipher)
