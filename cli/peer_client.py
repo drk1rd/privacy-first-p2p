@@ -55,7 +55,12 @@ def start_client():
     real_hashes = manifest["chunks"]
     dht = SocketDHT(real_hashes)
 
+    # If user gave a folder path, auto-generate a file path using manifest filename
+    if os.path.isdir(output_path):
+        output_path = os.path.join(output_path, "RECEIVED_" + manifest["filename"])
+
     decrypt_and_reconstruct(manifest, aes_key, dht, output_path)
+
 
 if __name__ == "__main__":
     start_client()
