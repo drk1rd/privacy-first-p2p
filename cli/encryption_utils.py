@@ -1,5 +1,8 @@
 import zlib
 import base64
+import os
+import random
+import string
 from hashlib import sha256
 from Crypto.Cipher import AES, PKCS1_OAEP
 from Crypto.PublicKey import RSA
@@ -35,7 +38,10 @@ def decrypt_key_with_rsa(priv_key, enc_key):
     cipher = PKCS1_OAEP.new(priv_key)
     return cipher.decrypt(enc_key)
 
-def chunk_and_encrypt(filepath):
+def generate_dummy_data(size=128):
+    return ''.join(random.choices(string.ascii_letters + string.digits, k=size)).encode()
+
+def chunk_and_encrypt(filepath, add_decoys=True):
     with open(filepath, "rb") as f:
         data = f.read()
 
@@ -44,11 +50,12 @@ def chunk_and_encrypt(filepath):
     key = get_random_bytes(16)
 
     manifest = {
-        "filename": filepath.split("/")[-1],
-        "chunks": [],  # Now ordered list of hashes
+        "filename": os.path.basename(filepath),
+        "chunks": [],
         "chunk_data": {},
         "nonces": {},
-        "encrypted_key": ""
+        "encrypted_key": "",
+        "decoy_hashes": []
     }
 
     for i in range(0, len(data), chunk_size):
@@ -64,18 +71,27 @@ def chunk_and_encrypt(filepath):
             manifest["chunk_data"][chunk_hash] = base64.b64encode(ciphertext).decode()
             manifest["nonces"][chunk_hash] = base64.b64encode(cipher.nonce).decode()
 
+    # Add fake/dummy chunks to the manifest
+    if add_decoys:
+        for _ in range(len(manifest["chunks"]) // 2):  # 50% dummy ratio
+            fake_data = compress(generate_dummy_data())
+            cipher = AES.new(key, AES.MODE_EAX)
+            encrypted, _ = cipher.encrypt_and_digest(fake_data)
+            fake_hash = sha256(encrypted).hexdigest()
+            manifest["decoy_hashes"].append(fake_hash)
+            manifest["chunk_data"][fake_hash] = base64.b64encode(encrypted).decode()
+            manifest["nonces"][fake_hash] = base64.b64encode(cipher.nonce).decode()
+
     return key, manifest
 
-def decrypt_and_reconstruct(manifest, key, dht, output_dir="."):
-    import os, threading
+def decrypt_and_reconstruct(manifest, key, dht, output_path):
+    import threading
     sub_chunks = {}
-    out_path = os.path.join(output_dir, "RECEIVED_" + manifest["filename"])
-    os.makedirs(output_dir, exist_ok=True)
 
     def retrieve_and_decrypt(chunk_hash):
         ciphertext_b64 = dht.retrieve(chunk_hash)
         if not ciphertext_b64:
-            print(f"Missing chunk: {chunk_hash}")
+            print(f"[!] Missing chunk: {chunk_hash}")
             return
         ciphertext = base64.b64decode(ciphertext_b64)
         nonce = base64.b64decode(manifest["nonces"][chunk_hash])
@@ -89,10 +105,14 @@ def decrypt_and_reconstruct(manifest, key, dht, output_dir="."):
         threads.append(t)
         t.start()
 
+    # Simulate traffic noise
+    for fake_hash in manifest.get("decoy_hashes", []):
+        _ = dht.retrieve(fake_hash)
+
     for t in threads:
         t.join()
 
-    with open(out_path, "wb") as f:
+    with open(output_path, "wb") as f:
         for chunk_hash in manifest["chunks"]:
             f.write(sub_chunks[chunk_hash])
-    print(f"File reconstructed at: {out_path}")
+    print(f"✅ File reconstructed at: {output_path}")

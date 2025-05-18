@@ -20,19 +20,22 @@ def upload_file():
 
     pub_key = load_public_key(pub_key_path)
     aes_key, manifest = chunk_and_encrypt(file_path)
+
     manifest["encrypted_key"] = encrypt_key_with_rsa(pub_key, aes_key).hex()
 
-    for h in manifest["chunks"]:
+    for h in manifest["chunk_data"]:
         dht.store(h, manifest["chunk_data"][h])
 
     manifest_path = file_path + "_manifest.json"
     with open(manifest_path, "w") as f:
         json.dump(manifest, f)
-    print(f"Uploaded and manifest saved at: {manifest_path}")
+
+    print(f"✅ Uploaded and manifest saved at: {manifest_path}")
 
 def download_file():
     manifest_path = input("Enter manifest path: ").strip()
     priv_key_path = input("Enter your private key path: ").strip()
+    output_path = input("Enter path where output file should be saved: ").strip()
 
     if not os.path.exists(manifest_path) or not os.path.exists(priv_key_path):
         print("Invalid paths.")
@@ -45,11 +48,16 @@ def download_file():
     enc_key = bytes.fromhex(manifest["encrypted_key"])
     aes_key = decrypt_key_with_rsa(priv_key, enc_key)
 
-    decrypt_and_reconstruct(manifest, aes_key, dht, output_dir="receiver")
+    if os.path.isdir(output_path):
+        filename = "RECEIVED_" + manifest["filename"]
+        output_path = os.path.join(output_path, filename)
+
+    decrypt_and_reconstruct(manifest, aes_key, dht, output_path)
+
 
 def cli():
     while True:
-        print("\n--- P2P CLI Secure File Sharing ---")
+        print("\n--- P2P CLI Secure File Sharing (Phase 3) ---")
         print("1. Upload file")
         print("2. Download file")
         print("3. Generate RSA Keypair")
