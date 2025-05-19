@@ -1,5 +1,8 @@
 import zlib
 import base64
+import ssl
+import socket
+import json
 import os
 import random
 import string
@@ -117,3 +120,43 @@ def decrypt_and_reconstruct(manifest, key, dht, output_path):
         for chunk_hash in manifest["chunks"]:
             f.write(sub_chunks[chunk_hash])
     print(f"✅ File reconstructed at: {output_path}")
+
+def request_manifest_and_key(peer_ip, peer_port, filename):
+    os.makedirs("manifest", exist_ok=True)
+    os.makedirs("keys", exist_ok=True)
+
+    context = ssl.create_default_context()
+    with socket.create_connection((peer_ip, int(peer_port))) as sock:
+        with context.wrap_socket(sock, server_hostname=peer_ip) as ssock:
+            # Request manifest
+            ssock.sendall(json.dumps({
+                "action": "get_manifest",
+                "filename": filename
+            }).encode())
+
+            response = json.loads(ssock.recv(65536).decode())
+            if response["status"] != "OK":
+                print("❌ Failed to get manifest.")
+                return False
+            manifest_path = f"manifest/{filename}_manifest.json"
+            with open(manifest_path, "w") as f:
+                f.write(response["data"])
+            print(f"✅ Manifest saved to {manifest_path}")
+
+    # Reconnect to fetch public key
+    with socket.create_connection((peer_ip, int(peer_port))) as sock:
+        with context.wrap_socket(sock, server_hostname=peer_ip) as ssock:
+            ssock.sendall(json.dumps({
+                "action": "get_key"
+            }).encode())
+
+            response = json.loads(ssock.recv(8192).decode())
+            if response["status"] != "OK":
+                print("❌ Failed to get public key.")
+                return False
+            key_path = "keys/pub.pem"
+            with open(key_path, "w") as f:
+                f.write(response["data"])
+            print(f"✅ Public key saved to {key_path}")
+
+    return True

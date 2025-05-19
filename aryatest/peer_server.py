@@ -10,19 +10,45 @@ def handle_client(conn, chunk_data):
     try:
         request = conn.recv(1024).decode()
         req = json.loads(request)
-        chunk_hash = req.get("hash")
+        action = req.get("action")
 
-        if chunk_hash in chunk_data:
-            response = {
-                "status": "OK",
-                "chunk": chunk_data[chunk_hash]
-            }
+        if action == "get_manifest":
+            filename = req.get("filename")
+            path = f"manifest/{filename}_manifest.json"
+            if os.path.exists(path):
+                with open(path, "r") as f:
+                    data = f.read()
+                response = {
+                    "status": "OK",
+                    "data": data
+                }
+            else:
+                response = {"status": "NOT_FOUND"}
+
+        elif action == "get_key":
+            path = "keys/pub.pem"
+            if os.path.exists(path):
+                with open(path, "r") as f:
+                    data = f.read()
+                response = {
+                    "status": "OK",
+                    "data": data
+                }
+            else:
+                response = {"status": "NOT_FOUND"}
+
         else:
-            response = {
-                "status": "NOT_FOUND"
-            }
+            chunk_hash = req.get("hash")
+            if chunk_hash in chunk_data:
+                response = {
+                    "status": "OK",
+                    "chunk": chunk_data[chunk_hash]
+                }
+            else:
+                response = {"status": "NOT_FOUND"}
 
         conn.sendall(json.dumps(response).encode())
+
     except Exception as e:
         print(f"[!] Error handling client: {e}")
     finally:
