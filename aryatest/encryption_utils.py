@@ -10,7 +10,7 @@ from hashlib import sha256
 from Crypto.Cipher import AES, PKCS1_OAEP
 from Crypto.PublicKey import RSA
 from Crypto.Random import get_random_bytes
-
+from Crypto.Util.number import bytes_to_long, long_to_bytes
 
 
 def compress(data):
@@ -37,12 +37,14 @@ def load_private_key(path):
         return RSA.import_key(f.read())
 
 def encrypt_key_with_rsa(priv_key, aes_key):
-  cipher = PKCS1_OAEP.new(priv_key)
-  return cipher.encrypt(aes_key)
+  num = bytes_to_long(aes_key)
+  encrypted = pow(num, priv_key.d, priv_key.n)
+  return long_to_bytes(encrypted)
 
 def decrypt_key_with_rsa(pub_key, enc_key):
-  cipher = PKCS1_OAEP.new(pub_key)
-  return cipher.decrypt(enc_key)
+  num = bytes_to_long(enc_key)
+  decrypted = pow(num, pub_key.e, pub_key.n)
+  return long_to_bytes(decrypted)
 
 
 def generate_dummy_data(size=128):
