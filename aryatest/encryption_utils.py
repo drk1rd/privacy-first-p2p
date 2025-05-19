@@ -46,6 +46,15 @@ def decrypt_key_with_rsa(pub_key, enc_key):
   decrypted = pow(num, pub_key.e, pub_key.n)
   return long_to_bytes(decrypted)
 
+def request_chunk_from_peer(ip, port, chunk_hash):
+  try:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+      s.connect((ip, int(port)))
+      s.send(chunk_hash.encode())
+      return s.recv(65536)
+  except Exception as e:
+    print(f"❌ Failed to fetch {chunk_hash} from {ip}:{port} – {e}")
+    return None
 
 def generate_dummy_data(size=128):
     return ''.join(random.choices(string.ascii_letters + string.digits, k=size)).encode()
@@ -95,14 +104,26 @@ def chunk_and_encrypt(filepath, add_decoys=True):
 
 def decrypt_and_reconstruct(manifest, key, dht, output_path):
     import threading
+    from p2p_node import peer_node  # import here to avoid circular imports
     sub_chunks = {}
 
     def retrieve_and_decrypt(chunk_hash):
-        ciphertext_b64 = dht.retrieve(chunk_hash)
-        if not ciphertext_b64:
+        # Step 1: Try local DHT first
+        chunk_data = dht.retrieve(chunk_hash)
+        if not chunk_data:
+            # Step 2: Ask peers
+            for ip, port in peer_node.peers:
+                chunk_data = request_chunk_from_peer(ip, port, chunk_hash)
+                if chunk_data:
+                    dht.store(chunk_hash, chunk_data)  # cache it locally
+                    break
+
+        if not chunk_data:
             print(f"[!] Missing chunk: {chunk_hash}")
             return
-        ciphertext = base64.b64decode(ciphertext_b64)
+
+        # Step 3: Decrypt and decompress
+        ciphertext = chunk_data if isinstance(chunk_data, bytes) else base64.b64decode(chunk_data)
         nonce = base64.b64decode(manifest["nonces"][chunk_hash])
         cipher = AES.new(key, AES.MODE_EAX, nonce=nonce)
         decrypted = cipher.decrypt(ciphertext)
@@ -114,7 +135,7 @@ def decrypt_and_reconstruct(manifest, key, dht, output_path):
         threads.append(t)
         t.start()
 
-    # Simulate traffic noise
+    # Simulate traffic noise (optional)
     for fake_hash in manifest.get("decoy_hashes", []):
         _ = dht.retrieve(fake_hash)
 
