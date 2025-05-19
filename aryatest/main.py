@@ -11,7 +11,9 @@ dht = DHT()
 peer_node = PeerNode(dht)
 
 def upload_file():
-    file_path = input("Enter file path: ").strip()
+    file_path = input("Enter file name: ").strip()
+    os.makedirs("input", exist_ok=True)
+    file_path = "input/"+file_path
     # pub_key_path = input("Enter receiver's public key path: ").strip()
     pub_key_path = "keys/pub.pem"
 
@@ -27,14 +29,17 @@ def upload_file():
     for h in manifest["chunk_data"]:
         dht.store(h, manifest["chunk_data"][h])
 
-    manifest_path = file_path + "_manifest.json"
+    filename = os.path.basename(file_path)
+    os.makedirs("manifest",exist_ok=True)
+    manifest_path = "manifest/"+filename+ "_manifest.json"
     with open(manifest_path, "w") as f:
         json.dump(manifest, f)
 
     print(f"✅ Uploaded and manifest saved at: {manifest_path}")
 
 def download_file():
-    manifest_path = input("Enter manifest path: ").strip()
+    manifest_path = input("Enter manifest filename: ").strip()
+    manifest_path = "manifest/" + manifest_path
     priv_key_path = "keys/pvt.pem"
     # priv_key_path = input("Enter your private key path: ").strip()
     # output_path = input("Enter path where output file should be saved: ").strip()

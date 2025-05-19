@@ -16,6 +16,7 @@ def decompress(data):
 
 def generate_rsa_keypair():
     key = RSA.generate(2048)
+    os.makedirs("keys",exist_ok=True)
     with open("keys/pvt.pem", "wb") as f:
         f.write(key.export_key())
     with open("keys/pub.pem", "wb") as f:
