@@ -3,3 +3,4 @@ keys/
 # input/
 manifest/
 output/
+certificate/*

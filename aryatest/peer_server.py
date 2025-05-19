@@ -1,15 +1,18 @@
 import socket
+import ssl
 import json
-from encryption_utils import chunk_and_encrypt, generate_rsa_keypair, load_public_key, encrypt_key_with_rsa
 import os
 
-HOST = '0.0.0.0'  # Listen on all interfaces
-PORT = 5000       # Change this if needed
+HOST = '0.0.0.0'
+PORT = 5000
 
 def handle_client(conn, chunk_data):
     try:
         request = conn.recv(1024).decode()
         req = json.loads(request)
+        # ... same as before ...
+        # Your existing handling code remains unchanged
+
         action = req.get("action")
 
         if action == "get_manifest":
@@ -64,16 +67,32 @@ def start_server(manifest_path):
 
     chunk_data = manifest["chunk_data"]
     print(f"[*] Loaded {len(chunk_data)} chunks.")
-    print(f"[*] Server listening on port {PORT}...")
+
+    # Create SSL context for server
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    context.load_cert_chain(
+        certfile="certificate/server_cert.pem",
+        keyfile="certificate/server_key.pem"
+    )
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind((HOST, PORT))
         s.listen()
 
+        print(f"[*] Server listening on port {PORT}...")
+
         while True:
             conn, addr = s.accept()
             print(f"[+] Connection from {addr}")
-            handle_client(conn, chunk_data)
+
+            try:
+                # Wrap plain socket with SSL
+                ssl_conn = context.wrap_socket(conn, server_side=True)
+                handle_client(ssl_conn, chunk_data)
+            except ssl.SSLError as e:
+                print(f"[!] SSL error with client {addr}: {e}")
+                conn.close()
+
 
 if __name__ == "__main__":
     manifest_file = input("Enter path to manifest file (e.g., myfile.pdf_manifest.json): ").strip()
