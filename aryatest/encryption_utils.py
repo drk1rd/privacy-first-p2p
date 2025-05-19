@@ -125,7 +125,11 @@ def request_manifest_and_key(peer_ip, peer_port, filename):
     os.makedirs("manifest", exist_ok=True)
     os.makedirs("keys", exist_ok=True)
 
-    context = ssl.create_default_context()
+    context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+    context.load_verify_locations("certificate/server_cert.pem")
+    context.check_hostname = False
+    context.verify_mode = ssl.CERT_REQUIRED
+    
     with socket.create_connection((peer_ip, int(peer_port))) as sock:
         with context.wrap_socket(sock, server_hostname=peer_ip) as ssock:
             # Request manifest
