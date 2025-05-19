@@ -17,10 +17,13 @@ def upload_file():
     # pub_key_path = input("Enter receiver's public key path: ").strip()
     pub_key_path = "keys/pub.pem"
 
-    if not os.path.exists(file_path) or not os.path.exists(pub_key_path):
-        print("Invalid paths.")
+    if not os.path.exists(file_path):
+        print("File does not exist")
         return
+    if not os.path.exists(pub_key_path):
+        generate_rsa_keypair()
 
+    pub_key_path = "keys/pub.pem"
     pub_key = load_public_key(pub_key_path)
     aes_key, manifest = chunk_and_encrypt(file_path)
 
@@ -43,10 +46,11 @@ def download_file():
     priv_key_path = "keys/pvt.pem"
     # priv_key_path = input("Enter your private key path: ").strip()
     # output_path = input("Enter path where output file should be saved: ").strip()
+    os.makedirs("output",exist_ok=True)
     output_path = "output/"
 
-    if not os.path.exists(manifest_path) or not os.path.exists(priv_key_path):
-        print("Invalid paths.")
+    if not os.path.exists(manifest_path) :
+        print("Manifest File does not exist")
         return
 
     with open(manifest_path, "r") as f:
