@@ -17,19 +17,19 @@ def upload_file():
     os.makedirs("input", exist_ok=True)
     file_path = "input/"+file_path
     # pub_key_path = input("Enter receiver's public key path: ").strip()
-    pub_key_path = "keys/pub.pem"
+    pvt_key_path = "keys/pvt.pem"
 
     if not os.path.exists(file_path):
         print("File does not exist")
         return
-    if not os.path.exists(pub_key_path):
+    if not os.path.exists(pvt_key_path):
         generate_rsa_keypair()
 
-    pub_key_path = "keys/pub.pem"
-    pub_key = load_public_key(pub_key_path)
+    pvt_key_path = "keys/pvt.pem"
+    pvt_key = load_public_key(pvt_key_path)
     aes_key, manifest = chunk_and_encrypt(file_path)
 
-    manifest["encrypted_key"] = encrypt_key_with_rsa(pub_key, aes_key).hex()
+    manifest["encrypted_key"] = encrypt_key_with_rsa(pvt_key, aes_key).hex()
 
     for h in manifest["chunk_data"]:
         dht.store(h, manifest["chunk_data"][h])
@@ -45,7 +45,7 @@ def upload_file():
 def download_file():
     manifest_filename = input("Enter manifest filename (without _manifest.json): ").strip()
     manifest_path = f"manifest/{manifest_filename}_manifest.json"
-    priv_key_path = "keys/pvt.pem"
+    pub_key_path = "keys/pub.pem"
     os.makedirs("output", exist_ok=True)
 
     if not os.path.exists(manifest_path):
@@ -60,7 +60,7 @@ def download_file():
     with open(manifest_path, "r") as f:
         manifest = json.load(f)
 
-    priv_key = load_private_key(priv_key_path)
+    priv_key = load_private_key(pub_key_path)
     enc_key = bytes.fromhex(manifest["encrypted_key"])
     aes_key = decrypt_key_with_rsa(priv_key, enc_key)
 
