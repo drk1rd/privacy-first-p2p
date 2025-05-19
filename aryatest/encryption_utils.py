@@ -11,6 +11,8 @@ from Crypto.Cipher import AES, PKCS1_OAEP
 from Crypto.PublicKey import RSA
 from Crypto.Random import get_random_bytes
 
+
+
 def compress(data):
     return zlib.compress(data)
 
@@ -125,11 +127,20 @@ def request_manifest_and_key(peer_ip, peer_port, filename):
     os.makedirs("manifest", exist_ok=True)
     os.makedirs("keys", exist_ok=True)
 
-    context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+    def recv_all(sock, buffer_size=4096):
+      data = b""
+      while True:
+        part = sock.recv(buffer_size)
+        if not part:
+          break
+        data += part
+      return data
+    context = ssl.create_default_context(cafile="certificate/server_cert.pem")
+    
     context.load_verify_locations("certificate/server_cert.pem")
     context.check_hostname = False
     context.verify_mode = ssl.CERT_REQUIRED
-    
+
     with socket.create_connection((peer_ip, int(peer_port))) as sock:
         with context.wrap_socket(sock, server_hostname=peer_ip) as ssock:
             # Request manifest
@@ -138,7 +149,10 @@ def request_manifest_and_key(peer_ip, peer_port, filename):
                 "filename": filename
             }).encode())
 
-            response = json.loads(ssock.recv(65536).decode())
+            # response = json.loads(ssock.recv(65536).decode())
+            raw = recv_all(ssock).decode()
+            response = json.loads(raw)
+
             if response["status"] != "OK":
                 print("❌ Failed to get manifest.")
                 return False
@@ -154,7 +168,10 @@ def request_manifest_and_key(peer_ip, peer_port, filename):
                 "action": "get_key"
             }).encode())
 
-            response = json.loads(ssock.recv(8192).decode())
+            # response = json.loads(ssock.recv(8192).decode())
+            raw = recv_all(ssock).decode()
+            response = json.loads(raw)
+
             if response["status"] != "OK":
                 print("❌ Failed to get public key.")
                 return False
