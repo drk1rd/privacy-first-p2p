@@ -26,7 +26,7 @@ def upload_file():
         generate_rsa_keypair()
 
     pvt_key_path = "keys/pvt.pem"
-    pvt_key = load_public_key(pvt_key_path)
+    pvt_key = load_private_key(pvt_key_path)
     aes_key, manifest = chunk_and_encrypt(file_path)
 
     manifest["encrypted_key"] = encrypt_key_with_rsa(pvt_key, aes_key).hex()
@@ -60,9 +60,9 @@ def download_file():
     with open(manifest_path, "r") as f:
         manifest = json.load(f)
 
-    priv_key = load_private_key(pub_key_path)
+    pub_key = load_public_key(pub_key_path)
     enc_key = bytes.fromhex(manifest["encrypted_key"])
-    aes_key = decrypt_key_with_rsa(priv_key, enc_key)
+    aes_key = decrypt_key_with_rsa(pub_key, enc_key)
 
     output_path = os.path.join("output", "RECEIVED_" + manifest["filename"])
     decrypt_and_reconstruct(manifest, aes_key, dht, output_path)

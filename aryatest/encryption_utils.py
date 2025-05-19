@@ -36,13 +36,14 @@ def load_private_key(path):
     with open(path, "rb") as f:
         return RSA.import_key(f.read())
 
-def encrypt_key_with_rsa(pub_key, aes_key):
-    cipher = PKCS1_OAEP.new(pub_key)
-    return cipher.encrypt(aes_key)
+def encrypt_key_with_rsa(priv_key, aes_key):
+  cipher = PKCS1_OAEP.new(priv_key)
+  return cipher.encrypt(aes_key)
 
-def decrypt_key_with_rsa(priv_key, enc_key):
-    cipher = PKCS1_OAEP.new(priv_key)
-    return cipher.decrypt(enc_key)
+def decrypt_key_with_rsa(pub_key, enc_key):
+  cipher = PKCS1_OAEP.new(pub_key)
+  return cipher.decrypt(enc_key)
+
 
 def generate_dummy_data(size=128):
     return ''.join(random.choices(string.ascii_letters + string.digits, k=size)).encode()
