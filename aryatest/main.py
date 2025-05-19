@@ -1,9 +1,11 @@
 import os
 import json
+import socket
+import ssl
 from encryption_utils import (
     generate_rsa_keypair, load_private_key, load_public_key,
     encrypt_key_with_rsa, decrypt_key_with_rsa,
-    chunk_and_encrypt, decrypt_and_reconstruct
+    chunk_and_encrypt, decrypt_and_reconstruct, request_manifest_and_key
 )
 from p2p_node import DHT, PeerNode
 
@@ -17,10 +19,13 @@ def upload_file():
     # pub_key_path = input("Enter receiver's public key path: ").strip()
     pub_key_path = "keys/pub.pem"
 
-    if not os.path.exists(file_path) or not os.path.exists(pub_key_path):
-        print("Invalid paths.")
+    if not os.path.exists(file_path):
+        print("File does not exist")
         return
+    if not os.path.exists(pub_key_path):
+        generate_rsa_keypair()
 
+    pub_key_path = "keys/pub.pem"
     pub_key = load_public_key(pub_key_path)
     aes_key, manifest = chunk_and_encrypt(file_path)
 
@@ -38,16 +43,19 @@ def upload_file():
     print(f"✅ Uploaded and manifest saved at: {manifest_path}")
 
 def download_file():
-    manifest_path = input("Enter manifest filename: ").strip()
-    manifest_path = "manifest/" + manifest_path
+    manifest_filename = input("Enter manifest filename (without _manifest.json): ").strip()
+    manifest_path = f"manifest/{manifest_filename}_manifest.json"
     priv_key_path = "keys/pvt.pem"
-    # priv_key_path = input("Enter your private key path: ").strip()
-    # output_path = input("Enter path where output file should be saved: ").strip()
-    output_path = "output/"
+    os.makedirs("output", exist_ok=True)
 
-    if not os.path.exists(manifest_path) or not os.path.exists(priv_key_path):
-        print("Invalid paths.")
-        return
+    if not os.path.exists(manifest_path):
+        print("📡 Manifest not found locally. Trying to fetch from peer.")
+        peer_ip = input("Enter peer IP address: ").strip()
+        peer_port = input("Enter peer port (e.g., 5000): ").strip()
+        success = request_manifest_and_key(peer_ip, peer_port, manifest_filename)
+        if not success:
+            print("❌ Could not retrieve manifest and key.")
+            return
 
     with open(manifest_path, "r") as f:
         manifest = json.load(f)
@@ -56,11 +64,9 @@ def download_file():
     enc_key = bytes.fromhex(manifest["encrypted_key"])
     aes_key = decrypt_key_with_rsa(priv_key, enc_key)
 
-    if os.path.isdir(output_path):
-        filename = "RECEIVED_" + manifest["filename"]
-        output_path = os.path.join(output_path, filename)
-
+    output_path = os.path.join("output", "RECEIVED_" + manifest["filename"])
     decrypt_and_reconstruct(manifest, aes_key, dht, output_path)
+
 
 
 def cli():
