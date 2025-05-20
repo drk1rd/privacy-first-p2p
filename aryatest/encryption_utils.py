@@ -36,12 +36,12 @@ def load_private_key(path):
     with open(path, "rb") as f:
         return RSA.import_key(f.read())
 
-def encrypt_key_with_rsa(priv_key, aes_key):
+def encrypt_key_with_rsa(pub_key, aes_key):
   num = bytes_to_long(aes_key)
   encrypted = pow(num, priv_key.d, priv_key.n)
   return long_to_bytes(encrypted)
 
-def decrypt_key_with_rsa(pub_key, enc_key):
+def decrypt_key_with_rsa(priv_key, enc_key):
   num = bytes_to_long(enc_key)
   decrypted = pow(num, pub_key.e, pub_key.n)
   return long_to_bytes(decrypted)
