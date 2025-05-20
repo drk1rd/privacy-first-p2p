@@ -38,12 +38,12 @@ def load_private_key(path):
 
 def encrypt_key_with_rsa(pub_key, aes_key):
   num = bytes_to_long(aes_key)
-  encrypted = pow(num, priv_key.d, priv_key.n)
+  encrypted = pow(num, pub_key.d, pub_key.n)
   return long_to_bytes(encrypted)
 
 def decrypt_key_with_rsa(priv_key, enc_key):
   num = bytes_to_long(enc_key)
-  decrypted = pow(num, pub_key.e, pub_key.n)
+  decrypted = pow(num, priv_key.e, priv_key.n)
   return long_to_bytes(decrypted)
 
 def request_chunk_from_peer(ip, port, chunk_hash):
