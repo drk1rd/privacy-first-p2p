@@ -14,6 +14,21 @@ def compress(data):
 def decompress(data):
     return zlib.decompress(data)
 
+
+def generate_rsa_keypair_gui():
+    key = RSA.generate(2048)
+    os.makedirs("generated", exist_ok=True)
+
+    pvt_path = "generated/my_private.pem"
+    pub_path = "generated/my_public.pem"
+
+    with open(pvt_path, "wb") as f:
+        f.write(key.export_key())
+    with open(pub_path, "wb") as f:
+        f.write(key.publickey().export_key())
+    
+    return pvt_path, pub_path
+
 def generate_rsa_keypair():
     key = RSA.generate(2048)
     with open("my_private.pem", "wb") as f:

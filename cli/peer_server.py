@@ -28,15 +28,20 @@ def handle_client(conn, chunk_data):
     finally:
         conn.close()
 
-def start_server(manifest_path):
+def start_server(manifest_path,log_collector=None):
     if not os.path.exists(manifest_path):
         print("Manifest not found.")
+        if log_collector is not None:
+            log_collector.append("Manifest not found.")
         return
-
+    
     with open(manifest_path, "r") as f:
         manifest = json.load(f)
 
     chunk_data = manifest["chunk_data"]
+    if log_collector is not None:
+        log_collector.append(f"[*] Loaded {len(chunk_data)} chunks.")
+        log_collector.append(f"[*] Server listening on port {PORT}...")
     print(f"[*] Loaded {len(chunk_data)} chunks.")
     print(f"[*] Server listening on port {PORT}...")
 
@@ -47,6 +52,8 @@ def start_server(manifest_path):
         while True:
             conn, addr = s.accept()
             print(f"[+] Connection from {addr}")
+            if log_collector is not None:
+                log_collector.append(f"[+] Connection from {addr}")
             handle_client(conn, chunk_data)
 
 if __name__ == "__main__":

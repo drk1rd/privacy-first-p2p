@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Success</title>
+</head>
+<body>
+    <h1>{{msg}}</h1>
+    <h3>Server Log: </h3>
+    <pre>
+{% for log in logs %}
+{{ log }}
+{% endfor %}
+    </pre>
+    <form method="post" action="/view-logs">
+  <button type="submit">🔄 Refresh Logs</button>
+</form>
+<a href="/">⬅ Back to Home</a>
+</body>
+</html>
