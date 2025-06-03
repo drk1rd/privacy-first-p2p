@@ -2,43 +2,42 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/static/styles.css">
   <title>P2P CLI Secure File Sharing (Phase 3)</title>
+</head>
 <body>
-
   <h1>--- P2P CLI Secure File Sharing (Phase 3) ---</h1>
-
   <div class="section">
     <h3>1. Upload File</h3>
     <form action="/upload" method="post" enctype="multipart/form-data">
       <label>Select File 1:
-      <input type="file" name="file"  required><br><br>
-</label>
+        <input type="file" name="file" required>
+      </label>
       <label>Select File 2:
-      <input type="file" name="pubkey"  required><br><br>
-</label>
+        <input type="file" name="pubkey" required>
+      </label>
       <button type="submit">Upload and Generate Manifest</button>
     </form>
   </div>
-
   <div class="section">
     <h3>2. Generate RSA Keypair</h3>
     <form action="/generate-keys" method="get">
       <button type="submit">Generate Keypair</button>
     </form>
   </div>
-
-<h3>Start Chunk Server</h3>
-<form action="/start-chunk-server" method="post">
-    <label for="manifest_path">Manifest File Path:</label>
-    <input type="text" id="manifest_path" name="manifest_path" required>
-    <button type="submit">Start Chunk Server</button>
-</form>
-{% if active_server %}
-<form action="/view-active-server-log" method="get">
-  <button type="submit">View Active Server</button>
-</form>
-{% endif %}
+  <div class="section">
+    <h3>Start Chunk Server</h3>
+    <form action="/start-chunk-server" method="post">
+      <label for="manifest_path">Manifest File Path:</label>
+      <input type="text" id="manifest_path" name="manifest_path" required>
+      <button type="submit">Start Chunk Server</button>
+    </form>
+    {% if active_server %}
+    <form action="/view-active-server-log" method="get">
+      <button type="submit">View Active Server</button>
+    </form>
+    {% endif %}
+  </div>
 </body>
 </html>

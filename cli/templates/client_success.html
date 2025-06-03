@@ -1,8 +1,15 @@
 <!DOCTYPE html>
 <html>
-<head><title>Success</title></head>
+<head>
+  <title>Success</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
 <body>
-  <h2>{{ msg }}</h2>
-  <a href="/download?filepath={{ filepath }}">Download File</a>
+  <div class="success-container">
+    <h2>{{ msg }}</h2>
+    <a href="/download?filepath={{ filepath }}">Download File</a>
+    <br><br>
+    <a href="/">Back to Home</a>
+  </div>
 </body>
 </html>

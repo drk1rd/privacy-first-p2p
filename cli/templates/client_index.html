@@ -1,20 +1,26 @@
 <!DOCTYPE html>
 <html lang="en">
-<head><meta charset="utf-8"><title>Client - File Reconstruct</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<head>
+  <meta charset="utf-8">
+  <title>Client - File Reconstruct</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
-  <h2>Download File from Peer Server</h2>
-  <form action="/submit-manifest" method="post" enctype="multipart/form-data">
-    <label>Manifest File:
-    <input type="file" name="manifest" required><br><br>
-    </label>
-    <label>Private Key<br>
-    <input type="file" name="privkey" required><br><br>
-    </label>
-    <label>Server IP:</label><br>
-    <input type="text" name="server_ip" required placeholder="e.g. 192.168.0.105"><br><br>
-    <button type="submit">Start Download</button>
-  </form>
+  <div class="section">
+    <h2>Download File from Peer Server</h2>
+    <form action="/submit-manifest" method="post" enctype="multipart/form-data">
+      <label>Manifest File:
+        <input type="file" name="manifest" required>
+      </label>
+      <label>Private Key
+        <input type="file" name="privkey" required>
+      </label>
+      <label>Server IP:
+        <input type="text" name="server_ip" required placeholder="e.g. 192.168.0.105">
+      </label>
+      <button type="submit">Start Download</button>
+    </form>
+  </div>
 </body>
 </html>

@@ -1,5 +1,5 @@
 kademlia
 pycryptodome
 cryptography
-fastapi
+fastapi[classic]
 jinja2

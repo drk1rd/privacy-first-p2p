@@ -1,8 +1,13 @@
 <!DOCTYPE html>
 <html>
-<head><title>Error</title></head>
+<head>
+  <title>Error</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
 <body>
-  <h2 style="color:red">{{ msg }}</h2>
-  <a href="/">Back</a>
+  <div class="error-container">
+    <h2>{{ msg }}</h2>
+    <a href="/">Back</a>
+  </div>
 </body>
 </html>
