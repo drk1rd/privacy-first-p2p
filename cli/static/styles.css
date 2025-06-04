@@ -25,22 +25,21 @@
 html, body {
   height: 100vh;
   width: 100vw;
-  margin: 0;
-  padding: 0;
   background: linear-gradient(135deg, #18181a 0%, #1a1a1c 50%, #1c1c1e 100%);
   color: var(--text-primary);
   font-family: var(--font-main);
+  margin: 0;
+  padding: 0;
   overflow-x: hidden;
-  box-sizing: border-box;
 }
 
 body {
-  min-height: 100vh;
-  min-width: 100vw;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 0;
+  min-height: 100vh;
+  padding: var(--spacing-lg);
   box-sizing: border-box;
 }
 
@@ -227,7 +226,7 @@ button:disabled {
   transform: none;
 }
 
-.section, .success-container, .error-container {
+/* .section, .success-container, .error-container {
   background: rgba(35, 35, 38, 0.4);
   border-radius: var(--border-radius-lg);
   box-shadow: 0 20px 60px rgba(0,0,0,0.5);
@@ -253,12 +252,9 @@ button:disabled {
   border-radius: var(--border-radius-lg);
   pointer-events: none;
   z-index: 1;
-}
+} */
 
-.section > *, .success-container > *, .error-container > * {
-  position: relative;
-  z-index: 2;
-}
+
 
 pre, code {
   background: rgba(44, 44, 46, 0.6);
@@ -317,35 +313,8 @@ pre, code {
   font-size: 1.5rem;
   margin-bottom: var(--spacing-md);
 }
-
-/* PC-optimized layout - remove mobile responsive behavior */
-@media (min-width: 1024px) {
-  body {
-    padding: var(--spacing-xl);
-  }
-  
-  form, .section, .success-container, .error-container {
-    max-width: 600px;
-    min-width: 500px;
-  }
-  
-  h1 {
-    font-size: 3rem;
-  }
-  
-  h2 {
-    font-size: 2rem;
-  }
-}
-
-/* Minimal mobile adjustments - keeping PC-first approach */
-@media (max-width: 768px) {
-  form, .section, .success-container, .error-container {
-    min-width: 90vw;
-    max-width: 98vw;
-    padding: var(--spacing-md);
-  }
-  body {
-    padding: 0;
-  }
+.success-container p {
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+  margin-bottom: var(--spacing-md);
 }
