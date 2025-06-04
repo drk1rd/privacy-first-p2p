@@ -25,21 +25,22 @@
 html, body {
   height: 100vh;
   width: 100vw;
+  margin: 0;
+  padding: 0;
   background: linear-gradient(135deg, #18181a 0%, #1a1a1c 50%, #1c1c1e 100%);
   color: var(--text-primary);
   font-family: var(--font-main);
-  margin: 0;
-  padding: 0;
   overflow-x: hidden;
+  box-sizing: border-box;
 }
 
 body {
+  min-height: 100vh;
+  min-width: 100vw;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 100vh;
-  padding: var(--spacing-lg);
+  padding: 0;
   box-sizing: border-box;
 }
 
@@ -340,12 +341,11 @@ pre, code {
 /* Minimal mobile adjustments - keeping PC-first approach */
 @media (max-width: 768px) {
   form, .section, .success-container, .error-container {
-    min-width: 300px;
-    max-width: 90vw;
-    padding: var(--spacing-lg);
-  }
-  
-  body {
+    min-width: 90vw;
+    max-width: 98vw;
     padding: var(--spacing-md);
+  }
+  body {
+    padding: 0;
   }
 }
