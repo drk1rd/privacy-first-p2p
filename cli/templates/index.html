@@ -7,30 +7,34 @@
   <title>P2P CLI Secure File Sharing (Phase 3)</title>
 </head>
 <body>
-  <h1>--- P2P CLI Secure File Sharing (Phase 3) ---</h1>
+  <h1>P2P CLI Secure File Sharing (Phase 3)</h1>
+  
   <div class="section">
     <h3>1. Upload File</h3>
     <form action="/upload" method="post" enctype="multipart/form-data">
-      <label>Select File 1:
+      <label>Select File:
         <input type="file" name="file" required>
       </label>
-      <label>Select File 2:
+      <label>Public Key:
         <input type="file" name="pubkey" required>
       </label>
       <button type="submit">Upload and Generate Manifest</button>
     </form>
   </div>
+  
   <div class="section">
     <h3>2. Generate RSA Keypair</h3>
     <form action="/generate-keys" method="get">
       <button type="submit">Generate Keypair</button>
     </form>
   </div>
+  
   <div class="section">
-    <h3>Start Chunk Server</h3>
+    <h3>3. Start Chunk Server</h3>
     <form action="/start-chunk-server" method="post">
-      <label for="manifest_path">Manifest File Path:</label>
-      <input type="text" id="manifest_path" name="manifest_path" required>
+      <label for="manifest_path">Manifest File Path:
+        <input type="text" id="manifest_path" name="manifest_path" required>
+      </label>
       <button type="submit">Start Chunk Server</button>
     </form>
     {% if active_server %}
