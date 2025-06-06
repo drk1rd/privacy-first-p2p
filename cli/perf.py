@@ -51,7 +51,7 @@ os.makedirs(TMP, exist_ok=True)
 RSA_PUB = "generated/my_public.pem"
 RSA_PRIV = "generated/my_private.pem"
 CSV_OUT = "comparison_results.csv"
-SIZES_MB = [1, 5, 10]
+SIZES_MB = [1, 5, 10, 20]
 
 def create_file(path, size_mb):
     with open(path, "wb") as f:
@@ -256,33 +256,49 @@ def generate_report(csv_path, report_path="benchmark_report.md"):
             "Basic mode bandwidth is higher because of straightforward file copying. Secure mode bandwidth is lower due to encryption overhead and chunk distribution."
         )
 
-        f.write("## Security Benefits of the Secure P2P System\n\n")
+        # Enhanced Security Benefits and Performance Analysis Section
+        f.write("## Security Benefits and Performance Analysis\n\n")
         f.write(
-            "- **Data confidentiality:** AES encryption ensures data remains private.\n"
-            "- **Decentralization:** Data is distributed across multiple nodes, reducing single points of failure.\n"
-            "- **Integrity:** Chunk hashing detects corruption or tampering.\n"
-            "- **Resilience:** Redundancy and decoy chunks (if implemented) improve availability.\n"
+            "- **Why Secure Mode Takes Longer and Uses More Resources:**\n\n"
+            "  1. **Chunking Overhead:**  \n"
+            "     The original file is split into multiple chunks, which introduces extra processing steps for indexing, handling, and storing each piece separately. This granularity increases the number of network operations compared to a single file copy.\n\n"
+            "  2. **Encryption and Decryption:**  \n"
+            "     Every chunk is encrypted using symmetric AES encryption with unique keys. Encryption and decryption are CPU-intensive tasks that require additional computation time and memory buffers, impacting both upload and download durations.\n\n"
+            "  3. **Distributed Storage Network:**  \n"
+            "     Chunks are stored across multiple DHT nodes rather than a single centralized server or disk. This decentralization increases network communication overhead, including latency and bandwidth usage, due to multiple storage and retrieval calls.\n\n"
+            "  4. **Key Management Overhead:**  \n"
+            "     AES keys are encrypted asymmetrically using RSA keys, which adds complexity and additional cryptographic operations on both upload and download, contributing to CPU and time usage.\n\n"
+            "- **Why Secure Mode is Still Better and Worth the Cost:**\n\n"
+            "  1. **Data Confidentiality:**  \n"
+            "     AES encryption ensures that even if chunks are intercepted or retrieved by unauthorized parties, the data remains unintelligible, protecting user privacy and sensitive information.\n\n"
+            "  2. **Resilience and Fault Tolerance:**  \n"
+            "     Distributing chunks across multiple nodes eliminates single points of failure. Even if some nodes go offline, the data can be reconstructed from other nodes, ensuring high availability.\n\n"
+            "  3. **Integrity and Tamper Detection:**  \n"
+            "     Each chunk’s hash is stored and verified, enabling detection of corrupted or maliciously altered data. This guards against data tampering and silent corruption.\n\n"
+            "  4. **Decentralization Reduces Trust Risks:**  \n"
+            "     Unlike centralized cloud storage, data spread across a peer-to-peer network reduces risks of data breaches caused by a compromised central server, making the system inherently more secure.\n\n"
+            "  5. **Scalability:**  \n"
+            "     The P2P model naturally scales with the number of nodes, distributing load and storage demands. This is crucial for large datasets or global-scale storage needs.\n\n"
+            "  6. **Enhanced Privacy Guarantees:**  \n"
+            "     Since no single node holds the entire file or encryption keys, the system minimizes information exposure, ensuring stronger privacy compared to traditional storage methods.\n\n"
         )
 
-        f.write("\n## Conclusion\n\n")
+        f.write("## Conclusion\n\n")
         f.write(
-            "While the secure P2P system introduces overhead in time, CPU, and memory, it provides substantial improvements in data privacy, resilience, and integrity that are not present in basic file transfers.\n"
-            "This makes it suitable for sensitive or distributed environments where security and decentralization matter more than raw speed.\n"
+            "While the secure P2P system demands more CPU, memory, and time due to the nature of chunking, encryption, and distributed storage, these trade-offs enable a **far more secure, private, and resilient** storage environment. "
+            "For users and applications where confidentiality, integrity, and fault tolerance are paramount, this system provides essential protections that conventional file transfers and centralized storage cannot match.\n"
         )
 
     print(f"✅ Markdown report generated: {report_path}")
 
-# ---- Main ----
+
+# ---- Main Execution ----
 
 def main():
     all_results = []
     for size in SIZES_MB:
-        print(f"\n📦 Testing {size}MB...")
-        all_results += benchmark_run(size)
+        all_results.extend(benchmark_run(size))
     save_csv(all_results)
-    print(f"\n✅ Results saved to: {CSV_OUT}")
-
-    # Generate markdown report
     generate_report(CSV_OUT)
 
 if __name__ == "__main__":
