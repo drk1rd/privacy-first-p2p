@@ -203,6 +203,15 @@ def generate_report(csv_path, report_path="benchmark_report.md"):
     plot_metric("Memory_MB", "MB", "Peak Memory Usage", "plots/memory_usage.png")
     plot_metric("Bandwidth_MBps", "MB/s", "Effective Bandwidth", "plots/bandwidth.png")
 
+    # Convert the entire DataFrame to a markdown table
+    # Limit columns and round float columns nicely for readability
+    df_to_display = df.copy()
+    float_cols = ["Upload_s", "Download_s", "Total_s", "Memory_MB", "CPU_%", "Bandwidth_MBps", "Latency_ms"]
+    for col in float_cols:
+        if col in df_to_display.columns:
+            df_to_display[col] = df_to_display[col].apply(lambda x: round(x, 2))
+    markdown_table = df_to_display.to_markdown(index=False)
+
     # Write markdown report
     with open(report_path, "w") as f:
         f.write("# Benchmark Report: Basic vs Secure P2P Storage\n\n")
@@ -212,6 +221,11 @@ def generate_report(csv_path, report_path="benchmark_report.md"):
         f.write("## Overview\n\n")
         f.write(f"Tested file sizes: {', '.join(str(s) + 'MB' for s in sorted(df.File_MB.unique()))}\n\n")
         f.write("Each test measures upload and download times, CPU and memory usage, and effective bandwidth.\n\n")
+
+        # Add CSV table here
+        f.write("## Summary Table\n\n")
+        f.write("Below is the raw benchmark data in table form for detailed reference.\n\n")
+        f.write(markdown_table + "\n\n")
 
         f.write("## Results\n\n")
 
@@ -290,6 +304,7 @@ def generate_report(csv_path, report_path="benchmark_report.md"):
         )
 
     print(f"✅ Markdown report generated: {report_path}")
+
 
 
 # ---- Main Execution ----
