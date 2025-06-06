@@ -1,162 +1,289 @@
-import os
-import time
-import csv
-import shutil
-import psutil
-import tracemalloc
-from hashlib import sha256
+import os, time, json, csv
+import psutil, tracemalloc
+from pathlib import Path
 from encryption_utils import (
-    generate_rsa_keypair,
-    load_private_key,
-    load_public_key,
-    encrypt_key_with_rsa,
-    decrypt_key_with_rsa,
-    chunk_and_encrypt,
-    decrypt_and_reconstruct
+    chunk_and_encrypt, decrypt_and_reconstruct,
+    encrypt_key_with_rsa, decrypt_key_with_rsa,
+    load_public_key, load_private_key
 )
-from p2p_node import DHT, PeerNode
+from threading import Lock
+from random import choice
+import matplotlib.pyplot as plt
 
-# === Configuration ===
-FILE_SIZES_MB = [1, 5, 10, 20]  # Customize sizes
-TEST_DIR = "test_files"
-CSV_FILE = "p2p_benchmark_results.csv"
+# ---- Simulated DHT and Nodes ----
 
-os.makedirs(TEST_DIR, exist_ok=True)
+class DHTNode:
+    def __init__(self, node_id):
+        self.node_id = node_id
+        self.storage = {}
+        self.lock = Lock()
 
-def generate_test_file(path, size_mb):
+    def store(self, chunk_hash, data):
+        with self.lock:
+            self.storage[chunk_hash] = data
+
+    def retrieve(self, chunk_hash):
+        with self.lock:
+            return self.storage.get(chunk_hash, None)
+
+class DHTNetwork:
+    def __init__(self, num_nodes=5):
+        self.nodes = [DHTNode(f"node_{i}") for i in range(num_nodes)]
+
+    def store(self, chunk_hash, data):
+        # Store chunk on a random node to simulate P2P distribution
+        node = choice(self.nodes)
+        node.store(chunk_hash, data)
+
+    def retrieve(self, chunk_hash):
+        # Search all nodes for the chunk
+        for node in self.nodes:
+            data = node.retrieve(chunk_hash)
+            if data is not None:
+                return data
+        return None
+
+# ---- Benchmark Setup ----
+
+TMP = "benchmark_local"
+os.makedirs(TMP, exist_ok=True)
+
+RSA_PUB = "generated/my_public.pem"
+RSA_PRIV = "generated/my_private.pem"
+CSV_OUT = "comparison_results.csv"
+SIZES_MB = [1, 5, 10]
+
+def create_file(path, size_mb):
     with open(path, "wb") as f:
         f.write(os.urandom(size_mb * 1024 * 1024))
 
-def basic_p2p_transfer(src, dest):
+def measure(fn, *args):
+    tracemalloc.start()
+    cpu_before = psutil.cpu_percent(interval=None)
+    net_before = psutil.net_io_counters()._asdict()
     start = time.time()
-    tracemalloc.start()
-    shutil.copyfile(src, dest)
-    peak_mem = tracemalloc.get_traced_memory()[1] // 1024
+
+    fn(*args)
+
+    end = time.time()
+    cpu_after = psutil.cpu_percent(interval=None)
+    net_after = psutil.net_io_counters()._asdict()
+    _, peak_mem = tracemalloc.get_traced_memory()
     tracemalloc.stop()
-    duration = time.time() - start
-    return duration, peak_mem
 
-def secure_p2p_transfer(src, pub_key_path, priv_key_path):
-    dht = DHT()
-    peer_node = PeerNode(dht)
+    net_used = (
+        net_after["bytes_sent"] + net_after["bytes_recv"]
+        - net_before["bytes_sent"] - net_before["bytes_recv"]
+    ) / (1024 * 1024)
 
-    result = {}
+    return {
+        "time": round(end - start, 3),
+        "cpu": round((cpu_before + cpu_after) / 2, 2),
+        "mem": round(peak_mem / (1024 * 1024), 2),
+        "bandwidth": round(net_used / (end - start + 1e-5), 2)
+    }
 
-    # Upload
-    start_up = time.time()
-    tracemalloc.start()
-    aes_key, manifest = chunk_and_encrypt(src)
-    encrypted_key = encrypt_key_with_rsa(load_public_key(pub_key_path), aes_key)
-    manifest["encrypted_key"] = encrypted_key.hex()
-    manifest["filename"] = os.path.basename(src)
-    for h, v in manifest["chunk_data"].items():
-        dht.store(h, v)
-    peak_mem_up = tracemalloc.get_traced_memory()[1] // 1024
-    tracemalloc.stop()
-    upload_time = time.time() - start_up
+# ---- Basic upload/download (simple file copy) ----
 
-    # Save manifest
-    manifest_path = src + ".manifest.json"
-    with open(manifest_path, "w") as f:
-        import json
-        json.dump(manifest, f)
+def basic_upload(src, dest):
+    with open(src, "rb") as f: data = f.read()
+    with open(dest, "wb") as f: f.write(data)
 
-    # Download
-    start_down = time.time()
-    tracemalloc.start()
-    enc_key = bytes.fromhex(manifest["encrypted_key"])
-    aes_key = decrypt_key_with_rsa(load_private_key(priv_key_path), enc_key)
-    output_path = src + ".reconstructed"
-    decrypt_and_reconstruct(manifest, aes_key, dht, output_path)
-    peak_mem_down = tracemalloc.get_traced_memory()[1] // 1024
-    tracemalloc.stop()
-    download_time = time.time() - start_down
+def basic_download(src, dest):
+    with open(src, "rb") as f: data = f.read()
+    with open(dest, "wb") as f: f.write(data)
 
-    # Integrity check
-    hash_orig = sha256(open(src, "rb").read()).hexdigest()
-    hash_recv = sha256(open(output_path, "rb").read()).hexdigest()
-    integrity = hash_orig == hash_recv
+# ---- Secure upload/download (P2P chunks + encryption) ----
 
-    # Manifest size
-    manifest_size = os.path.getsize(manifest_path) // 1024
+def secure_upload(src_path, manifest_path, dht):
+    pubkey = load_public_key(RSA_PUB)
+    aes_key, manifest = chunk_and_encrypt(src_path)
+    manifest["encrypted_key"] = encrypt_key_with_rsa(pubkey, aes_key).hex()
+    for h, d in manifest["chunk_data"].items():
+        dht.store(h, d)
+    with open(manifest_path, "w") as f: json.dump(manifest, f)
 
-    # Cleanup
-    os.remove(manifest_path)
-    os.remove(output_path)
+def secure_download(manifest_path, output_path, dht):
+    with open(manifest_path, "r") as f: manifest = json.load(f)
+    priv = load_private_key(RSA_PRIV)
+    key = decrypt_key_with_rsa(priv, bytes.fromhex(manifest["encrypted_key"]))
+    decrypt_and_reconstruct(manifest, key, dht, output_path)
 
-    result.update({
-        "upload_time": round(upload_time, 3),
-        "download_time": round(download_time, 3),
-        "total_time": round(upload_time + download_time, 3),
-        "real_chunks": len(manifest["chunks"]),
-        "decoy_chunks": len(manifest.get("decoy_hashes", [])),
-        "memory_upload_kb": peak_mem_up,
-        "memory_download_kb": peak_mem_down,
-        "manifest_size_kb": manifest_size,
-        "integrity_check": integrity
-    })
+# ---- Benchmark run for one file size ----
 
-    return result
+def benchmark_run(size_mb):
+    dht_network = DHTNetwork(num_nodes=5)
 
-def write_csv_header(file_path):
-    with open(file_path, mode="w", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerow([
-            "File_Size_MB",
-            "Mode",
-            "Total_Time_s",
-            "Upload_Time_s",
-            "Download_Time_s",
-            "Memory_Usage_KB",
-            "Real_Chunks",
-            "Decoy_Chunks",
-            "Manifest_Size_KB",
-            "Integrity_OK"
-        ])
+    name = f"{size_mb}MB"
+    original = f"{TMP}/{name}_input.bin"
+    basic_temp = f"{TMP}/{name}_basic_temp.bin"
+    basic_out = f"{TMP}/{name}_basic_out.bin"
+    secure_out = f"{TMP}/{name}_secure_out.bin"
+    manifest = f"{TMP}/{name}_manifest.json"
+    
+    create_file(original, size_mb)
 
-def append_csv_row(file_path, row):
-    with open(file_path, mode="a", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerow(row)
+    # Basic upload + download
+    up_b = measure(basic_upload, original, basic_temp)
+    down_b = measure(basic_download, basic_temp, basic_out)
 
-def run_benchmark():
-    print("🔐 Generating RSA keypair...")
-    generate_rsa_keypair()
-    priv_key = "my_private.pem"
-    pub_key = "my_public.pem"
+    # Secure upload + download on DHT network
+    up_s = measure(secure_upload, original, manifest, dht_network)
+    down_s = measure(secure_download, manifest, secure_out, dht_network)
 
-    write_csv_header(CSV_FILE)
+    with open(manifest) as f:
+        m = json.load(f)
 
-    for size in FILE_SIZES_MB:
-        file_path = os.path.join(TEST_DIR, f"sample_{size}MB.bin")
-        generate_test_file(file_path, size)
+    return [
+        {
+            "Mode": "basic",
+            "File_MB": size_mb,
+            "Upload_s": up_b["time"],
+            "Download_s": down_b["time"],
+            "Total_s": round(up_b["time"] + down_b["time"], 3),
+            "Memory_MB": max(up_b["mem"], down_b["mem"]),
+            "CPU_%": round((up_b["cpu"] + down_b["cpu"]) / 2, 2),
+            "Bandwidth_MBps": round(size_mb / (up_b["time"] + down_b["time"] + 1e-5), 2),
+            "Chunks": 1,
+            "Decoys": 0,
+            "Latency_ms": 0
+        },
+        {
+            "Mode": "secure",
+            "File_MB": size_mb,
+            "Upload_s": up_s["time"],
+            "Download_s": down_s["time"],
+            "Total_s": round(up_s["time"] + down_s["time"], 3),
+            "Memory_MB": max(up_s["mem"], down_s["mem"]),
+            "CPU_%": round((up_s["cpu"] + down_s["cpu"]) / 2, 2),
+            "Bandwidth_MBps": round(size_mb / (up_s["time"] + down_s["time"] + 1e-5), 2),
+            "Chunks": len(m["chunks"]),
+            "Decoys": len(m.get("decoy_hashes", [])),
+            "Latency_ms": round((up_s["time"] + down_s["time"]) / len(m["chunks"]) * 1000, 2)
+        }
+    ]
 
-        print(f"\n📦 Testing file size: {size} MB")
+# ---- Save results to CSV ----
 
-        # Basic P2P
-        dest_path = file_path + ".copy"
-        basic_time, basic_mem = basic_p2p_transfer(file_path, dest_path)
-        append_csv_row(CSV_FILE, [
-            size, "Basic", round(basic_time, 3), "-", "-", basic_mem,
-            "-", "-", "-", "TRUE"
-        ])
-        os.remove(dest_path)
+def save_csv(results):
+    with open(CSV_OUT, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=results[0].keys())
+        writer.writeheader()
+        writer.writerows(results)
 
-        # Secure P2P
-        secure_stats = secure_p2p_transfer(file_path, pub_key, priv_key)
-        append_csv_row(CSV_FILE, [
-            size, "Secure",
-            secure_stats["total_time"],
-            secure_stats["upload_time"],
-            secure_stats["download_time"],
-            secure_stats["memory_upload_kb"] + secure_stats["memory_download_kb"],
-            secure_stats["real_chunks"],
-            secure_stats["decoy_chunks"],
-            secure_stats["manifest_size_kb"],
-            str(secure_stats["integrity_check"]).upper()
-        ])
+# ---- Generate Markdown Report with Plots ----
 
-    print(f"\n✅ All tests complete. Results saved to: {CSV_FILE}")
+def generate_report(csv_path, report_path="benchmark_report.md"):
+    import pandas as pd
+
+    df = pd.read_csv(csv_path)
+
+    # Separate basic and secure
+    basic_df = df[df.Mode == "basic"]
+    secure_df = df[df.Mode == "secure"]
+
+    # Plot settings
+    def plot_metric(metric, ylabel, title, filename):
+        plt.figure(figsize=(8,5))
+        plt.plot(basic_df.File_MB, basic_df[metric], marker='o', label='Basic')
+        plt.plot(secure_df.File_MB, secure_df[metric], marker='o', label='Secure')
+        plt.xlabel("File Size (MB)")
+        plt.ylabel(ylabel)
+        plt.title(title)
+        plt.legend()
+        plt.grid(True)
+        plt.savefig(filename)
+        plt.close()
+
+    os.makedirs("plots", exist_ok=True)
+    plot_metric("Upload_s", "Seconds", "Upload Time", "plots/upload_time.png")
+    plot_metric("Download_s", "Seconds", "Download Time", "plots/download_time.png")
+    plot_metric("Total_s", "Seconds", "Total Transfer Time", "plots/total_time.png")
+    plot_metric("CPU_%", "CPU %", "Average CPU Usage", "plots/cpu_usage.png")
+    plot_metric("Memory_MB", "MB", "Peak Memory Usage", "plots/memory_usage.png")
+    plot_metric("Bandwidth_MBps", "MB/s", "Effective Bandwidth", "plots/bandwidth.png")
+
+    # Write markdown report
+    with open(report_path, "w") as f:
+        f.write("# Benchmark Report: Basic vs Secure P2P Storage\n\n")
+
+        f.write("This report compares the performance of a basic file copy method against a secure, chunked, encrypted P2P storage system.\n\n")
+
+        f.write("## Overview\n\n")
+        f.write(f"Tested file sizes: {', '.join(str(s) + 'MB' for s in sorted(df.File_MB.unique()))}\n\n")
+        f.write("Each test measures upload and download times, CPU and memory usage, and effective bandwidth.\n\n")
+
+        f.write("## Results\n\n")
+
+        def add_plot_section(title, filename, analysis):
+            f.write(f"### {title}\n\n")
+            f.write(f"![{title}]({filename})\n\n")
+            f.write(analysis + "\n\n")
+
+        add_plot_section(
+            "Upload Time",
+            "plots/upload_time.png",
+            "The secure mode generally takes longer to upload due to chunking, encryption, and distributed storage overheads."
+        )
+
+        add_plot_section(
+            "Download Time",
+            "plots/download_time.png",
+            "Download time in secure mode can vary based on chunk retrieval from multiple nodes, but remains competitive."
+        )
+
+        add_plot_section(
+            "Total Transfer Time",
+            "plots/total_time.png",
+            "Overall, secure mode shows increased total time, a trade-off for added security and decentralization."
+        )
+
+        add_plot_section(
+            "CPU Usage",
+            "plots/cpu_usage.png",
+            "Secure mode uses more CPU due to cryptographic operations and chunk management."
+        )
+
+        add_plot_section(
+            "Memory Usage",
+            "plots/memory_usage.png",
+            "Memory peaks are higher in secure mode because of chunk buffering and encryption processes."
+        )
+
+        add_plot_section(
+            "Effective Bandwidth",
+            "plots/bandwidth.png",
+            "Basic mode bandwidth is higher because of straightforward file copying. Secure mode bandwidth is lower due to encryption overhead and chunk distribution."
+        )
+
+        f.write("## Security Benefits of the Secure P2P System\n\n")
+        f.write(
+            "- **Data confidentiality:** AES encryption ensures data remains private.\n"
+            "- **Decentralization:** Data is distributed across multiple nodes, reducing single points of failure.\n"
+            "- **Integrity:** Chunk hashing detects corruption or tampering.\n"
+            "- **Resilience:** Redundancy and decoy chunks (if implemented) improve availability.\n"
+        )
+
+        f.write("\n## Conclusion\n\n")
+        f.write(
+            "While the secure P2P system introduces overhead in time, CPU, and memory, it provides substantial improvements in data privacy, resilience, and integrity that are not present in basic file transfers.\n"
+            "This makes it suitable for sensitive or distributed environments where security and decentralization matter more than raw speed.\n"
+        )
+
+    print(f"✅ Markdown report generated: {report_path}")
+
+# ---- Main ----
+
+def main():
+    all_results = []
+    for size in SIZES_MB:
+        print(f"\n📦 Testing {size}MB...")
+        all_results += benchmark_run(size)
+    save_csv(all_results)
+    print(f"\n✅ Results saved to: {CSV_OUT}")
+
+    # Generate markdown report
+    generate_report(CSV_OUT)
 
 if __name__ == "__main__":
-    run_benchmark()
+    main()

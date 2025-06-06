@@ -1,9 +1,0 @@
-File_Size_MB,Mode,Total_Time_s,Upload_Time_s,Download_Time_s,Memory_Usage_KB,Real_Chunks,Decoy_Chunks,Manifest_Size_KB,Integrity_OK
-1,Basic,0.013,-,-,1042,-,-,-,TRUE
-1,Secure,0.638,0.296,0.342,4307,128,64,1423,TRUE
-5,Basic,0.007,-,-,1042,-,-,-,TRUE
-5,Secure,2.67,1.366,1.304,19264,640,320,7113,TRUE
-10,Basic,0.027,-,-,1042,-,-,-,TRUE
-10,Secure,4.559,2.324,2.235,37901,1280,640,14226,TRUE
-20,Basic,0.025,-,-,1042,-,-,-,TRUE
-20,Secure,8.949,4.401,4.547,75520,2560,1280,28451,TRUE
