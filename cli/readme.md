@@ -1,123 +1,374 @@
-# 🔐 P2P Secure File Sharing (CLI-Based)
+# Privacy-First P2P File Sharing CLI
 
-A CLI-based peer-to-peer secure file sharing system with advanced features for encryption, compression, and LAN-based socket transfer.
+A secure, privacy-focused peer-to-peer file sharing system with end-to-end encryption. This CLI application allows users to securely share files over a P2P network while maintaining data privacy and security.
 
----
+## Technical Architecture
 
-## 🚀 Features
+### System Components
 
-- 📦 File chunking and sub-chunking  
-- 🔐 AES encryption per sub-chunk  
-- 🔑 RSA encryption for key exchange  
-- 📉 Compression of sub-chunks  
-- 🧵 Threaded parallel reconstruction  
-- 🗃️ Simulated Distributed Hash Table (DHT)  
-- 🌐 LAN-based P2P file transmission via sockets  
+1. **P2P Network Layer**
+   - Kademlia DHT implementation for decentralized storage
+   - Peer discovery and routing
+   - Distributed chunk storage and retrieval
 
----
+2. **Security Layer**
+   - RSA for asymmetric encryption (key exchange)
+   - AES for symmetric encryption (file content)
+   - Secure key management and storage
 
-## FOR SIMULATING THE SENDER AND RECEIVER ON SAME PC 
+3. **File Management Layer**
+   - File chunking and reconstruction
+   - Manifest generation and parsing
+   - Parallel processing for large files
 
+4. **User Interface Layer**
+   - Command-line interface
+   - Web-based GUI (optional)
+   - Progress tracking and status updates
 
-## 📁 Setup: Create Two Separate Folders
+### Data Flow
 
-Create two folders to simulate the **Sender** and **Receiver**. Run the scripts from the root folder itself . 
+```mermaid
+graph TD
+    A[File] --> B[Chunking]
+    B --> C[Encryption]
+    C --> D[DHT Storage]
+    D --> E[Manifest Generation]
+    E --> F[Download Request]
+    F --> G[Chunk Retrieval]
+    G --> H[Decryption]
+    H --> I[File Reconstruction]
+```
 
-### 1. 📦 Install Dependencies (pip install -r requirements.txt)
-### 2.     python main.py
-### 3.   SELECT OPTION 3:  Generate RSA Keypair
+## Features
 
-This will create:
+- End-to-end encryption using RSA and AES
+- Peer-to-peer file sharing using Kademlia DHT
+- Secure file chunking and reconstruction
+- Command-line interface for easy file operations
+- Key pair generation and management
+- Peer discovery and connection
+- Parallel processing for improved performance
+- Progress tracking and status updates
+- Automatic error recovery and retry mechanisms
 
-my_private.pem
+## Project Structure
 
-my_public.pem 
+```
+cli/
+├── main.py              # Main CLI application entry point
+├── p2p_node.py          # P2P node implementation
+├── peer_server.py       # P2P server implementation
+├── peer_client.py       # P2P client implementation
+├── gui.py              # GUI implementation
+├── gui_client.py       # GUI client implementation
+├── encryption_utils.py  # Encryption utilities
+├── requirements.txt     # Project dependencies
+├── templates/          # HTML templates for GUI
+├── static/            # Static assets for GUI
+├── received_files/    # Directory for downloaded files
+├── generated/         # Directory for generated files
+└── plots/            # Directory for benchmark plots
+```
 
-(Generate two pairs each for sender and receiver and move them to their respective folders)
+## Implementation Details
 
+### File Processing
 
-### 4.  Select option 1: Upload file
+```python
+# Example of file chunking and encryption
+def process_file(file_path, public_key):
+    # 1. Generate AES key
+    aes_key = generate_aes_key()
+    
+    # 2. Chunk file
+    chunks = chunk_file(file_path)
+    
+    # 3. Encrypt chunks
+    encrypted_chunks = encrypt_chunks(chunks, aes_key)
+    
+    # 4. Encrypt AES key with RSA
+    encrypted_key = encrypt_with_rsa(aes_key, public_key)
+    
+    return encrypted_chunks, encrypted_key
+```
 
-Enter the file name to upload (e.g., example.pdf)
+### P2P Network Operations
 
-Enter the path to the receiver’s public key, e.g., receiver/my_public.pem
+```python
+# Example of P2P node operations
+class P2PNode:
+    def __init__(self):
+        self.dht = DHT()
+        self.peers = set()
+    
+    def connect_to_peer(self, ip, port):
+        # Connect to new peer
+        peer = Peer(ip, port)
+        self.peers.add(peer)
+        
+    def store_chunk(self, chunk_id, data):
+        # Store chunk in DHT
+        self.dht.store(chunk_id, data)
+```
 
-This will:
+## Prerequisites
 
-Encrypt and compress the file
+- Python 3.7 or higher
+- pip (Python package manager)
+- Network connectivity for P2P operations
+- Sufficient disk space for file operations
 
-Split it into chunks and sub-chunks
+## Installation
 
-Store them in a simulated DHT
+1. Create a virtual environment (recommended):
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
 
-Create a manifest JSON file like example.pdf_manifest.json
+2. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
 
-### 5. Select option 2: Download file
+## Usage
 
-Enter the path to the manifest (e.g., sender/example.pdf_manifest.json)
+### Starting the Application
 
-Enter the path to your private key (e.g., receiver/my_private.pem)
+Run the main script:
+```bash
+python main.py
+```
 
-This will:
+### Available Commands
 
-   Retrieve chunks from DHT
+1. **Upload File**
+   - Uploads a file to the P2P network
+   - Requires receiver's public key
+   - Generates a manifest file for sharing
+   ```bash
+   # Example usage
+   Enter file path: /path/to/file.txt
+   Enter receiver's public key path: /path/to/public.pem
+   ```
 
-   Decrypt and decompress them in parallel
+2. **Download File**
+   - Downloads a file using its manifest
+   - Requires your private key
+   - Reconstructs the original file
+   ```bash
+   # Example usage
+   Enter manifest path: /path/to/manifest.json
+   Enter private key path: /path/to/private.pem
+   Enter output path: /path/to/output/
+   ```
 
-   Reconstruct the file into the receiver/ directory as RECEIVED_example.pdf
+3. **Generate RSA Keypair**
+   - Creates a new RSA key pair
+   - Saves public and private keys
+   ```bash
+   # Generated files
+   - my_private.pem
+   - my_public.pem
+   ```
 
+4. **Connect to Peer**
+   - Connect to another peer in the network
+   - Requires peer's IP and port
+   ```bash
+   # Example usage
+   Enter peer IP: 192.168.1.100
+   Enter peer port: 8000
+   ```
 
-## FOR USING P2P TRANSMISSION USING SOCKETS OVER LAN BETWEEN MULTIPLE NODES IN AN NETWORK OR OVER INTERNET
+5. **Exit**
+   - Exits the application
 
-### 1. 📦 Install Dependencies (pip install -r requirements.txt)
-### 2.     python main.py
-### 3.   SELECT OPTION 3:  Generate RSA Keypair
-This will create:
+### File Sharing Process
 
-my_private.pem (keep safe) and transmit to receiver using a secure channel
+1. **Uploading a File**
+   - The file is chunked and encrypted using AES
+   - The AES key is encrypted using the receiver's RSA public key
+   - Chunks are distributed across the P2P network
+   - A manifest file is generated for the receiver
+   ```json
+   // Example manifest structure
+   {
+     "filename": "example.txt",
+     "chunk_count": 10,
+     "encrypted_key": "base64_encoded_key",
+     "chunk_hashes": ["hash1", "hash2", ...],
+     "chunk_sizes": [1024, 1024, ...]
+   }
+   ```
 
-my_public.pem (can be shared)
+2. **Downloading a File**
+   - The manifest file is used to locate file chunks
+   - The encrypted AES key is decrypted using your private key
+   - Chunks are retrieved and decrypted
+   - The original file is reconstructed
 
-### 4. python main.py
-# Select Option 1: Upload file
+## Security Features
 
-File name to upload (e.g., example.pdf)
+- End-to-end encryption using RSA and AES
+- Secure key exchange
+- File chunking for efficient distribution
+- Private key protection
+- Secure peer-to-peer communication
+- Automatic key rotation
+- Secure manifest validation
+- Integrity checks for downloaded chunks
 
-Path to receiver’s public key (e.g., my_public.pem)
+## Dependencies
 
-It Generate a manifest file: example.pdf_manifest.json (share to the receiver over a secure channel)
+- kademlia: P2P DHT implementation
+- pycryptodome: Cryptographic operations
+- cryptography: Additional cryptographic utilities
+- fastapi: Web framework for GUI
+- jinja2: Template engine for GUI
 
-### 5.  Get Sender's Local IP
+## Error Handling
 
-Windows:
+The system implements comprehensive error handling for:
+- Network connectivity issues
+- File I/O operations
+- Encryption/decryption failures
+- Peer discovery problems
+- Chunk retrieval timeouts
+- Invalid manifest files
+- Corrupted data chunks
 
-ipconfig (enter in terminal)
+## Performance Considerations
 
-Look for: IPv4 Address
+- Parallel chunk processing
+- Efficient memory management
+- Optimized network operations
+- Caching mechanisms
+- Progress tracking
+- Resource cleanup
 
-macOS/Linux:
+## Contributing
 
-ifconfig
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
 
-### 6. Start the Server (Sender Side) 
+## License
 
-python peer_server.py
+This project is licensed under the MIT License - see the LICENSE file for details.
 
-Enter: ./example.pdf_manifest.json
+## GUI Interface
 
-✅ Server now listens for incoming chunk requests. (keep this file running on sender machine)
+The application includes a web-based GUI built with FastAPI and Jinja2 templates, providing an alternative to the CLI interface.
 
-### 7. Start the Client (Receiver Side)
+### GUI Components
 
-python peer_client.py
+1. **Web Server**
+   - FastAPI-based web application
+   - Jinja2 templating for dynamic content
+   - Static file serving for assets
+   - RESTful API endpoints
 
-Enter: <Sender's LAN IP> (e.g., 192.168.1.15)
+2. **User Interface**
+   - Modern, responsive web design
+   - Real-time progress tracking
+   - Interactive file operations
+   - Server status monitoring
 
-Enter: ./example.pdf_manifest.json (manifest path)
+### GUI Features
 
-Enter: ./my_private.pem (private key path)
+1. **File Operations**
+   - Drag-and-drop file upload
+   - Public key upload interface
+   - Manifest file generation
+   - Download progress tracking
 
-Enter: ./receiver (where you want the file to be downloaded) 
+2. **Key Management**
+   - One-click RSA key pair generation
+   - Secure key download
+   - Key status monitoring
 
+3. **Server Management**
+   - Start/stop chunk server
+   - Real-time server logs
+   - Connection status monitoring
+   - Active peer tracking
 
-✅ Receiver pulls encrypted sub-chunks over LAN and reconstructs the file securely.
+### GUI Implementation
+
+```python
+# Example of GUI route implementation
+@app.post("/upload")
+async def upload_file(file: UploadFile, pubkey: UploadFile):
+    # Handle file upload
+    # Process encryption
+    # Generate manifest
+    return FileResponse(manifest_path)
+
+@app.get("/generate-keys")
+async def generate_keys():
+    # Generate RSA key pair
+    # Return success page
+    return TemplateResponse("keys_ready.html")
+```
+
+### GUI Usage
+
+1. **Starting the GUI**
+   ```bash
+   uvicorn gui:app --reload
+   ```
+   Access the interface at `http://localhost:8000`
+
+2. **File Upload Process**
+   - Navigate to the upload page
+   - Select file to upload
+   - Upload receiver's public key
+   - Download generated manifest
+
+3. **Key Generation**
+   - Click "Generate Keys" button
+   - Download generated key pair
+   - Store keys securely
+
+4. **Server Management**
+   - Start chunk server with manifest
+   - Monitor server status
+   - View real-time logs
+   - Track active connections
+
+### GUI Architecture
+
+```mermaid
+graph TD
+    A[Web Browser] --> B[FastAPI Server]
+    B --> C[File Processing]
+    B --> D[Key Management]
+    B --> E[Server Control]
+    C --> F[Encryption]
+    C --> G[Manifest Generation]
+    D --> H[Key Generation]
+    D --> I[Key Storage]
+    E --> J[Chunk Server]
+    E --> K[Log Management]
+```
+
+### GUI Security Features
+
+- Secure file upload handling
+- Protected key management
+- Safe manifest generation
+- Secure server control
+- Real-time status monitoring
+- Error handling and recovery
+
+### GUI Dependencies
+
+- fastapi: Web framework
+- jinja2: Template engine
+- uvicorn: ASGI server
+- python-multipart: File upload handling
+- aiofiles: Async file operations
